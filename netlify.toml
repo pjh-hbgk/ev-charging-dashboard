@@ -1,0 +1,20 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Refresh the electricity price cache automatically once a day (Netlify
+# Scheduled Functions). Optional — remove this block if you'd rather
+# trigger refreshes manually from Data Management / Electricity Prices.
+# When invoked on this schedule (no query string), fetch-prices.ts
+# defaults to a rolling window covering yesterday through 2 days ahead.
+[functions."fetch-prices"]
+  schedule = "@daily"
