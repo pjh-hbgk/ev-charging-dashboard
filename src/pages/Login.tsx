@@ -1,60 +1,52 @@
-import { useState } from 'react';
+iimport { useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { isSupabaseConfigured } from '../lib/supabaseClient';
-import { Zap } from 'lucide-react';
 
 export default function Login() {
-  const { signIn } = useAuth();
+  const { session, signIn, loading } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  if (!loading && session) return <Navigate to="/" replace />;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
+    setSubmitting(true);
     setError(null);
-    const { error } = await signIn(email, password);
-    setBusy(false);
-    if (error) setError(error);
+    const { error: err } = await signIn(email, password);
+    setSubmitting(false);
+    if (err) {
+      setError(err);
+    } else {
+      // Don't rely solely on the auth-context re-render to trigger the <Navigate> above —
+      // explicitly push to the dashboard as soon as sign-in succeeds.
+      navigate('/', { replace: true });
+    }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-page dark:bg-surface-darkpage px-4">
-      <div className="w-full max-w-sm">
-        <div className="flex items-center gap-2 justify-center mb-8">
-          <div className="h-9 w-9 rounded-lg bg-series-1 flex items-center justify-center">
-            <Zap className="h-5 w-5 text-white" strokeWidth={2.5} />
-          </div>
-          <span className="text-lg font-semibold">EV Charging Dashboard</span>
+      <form onSubmit={handleSubmit} className="card w-full max-w-sm p-6 space-y-4">
+        <div>
+          <div className="text-xl font-semibold">⚡ EV Charging Dashboard</div>
+          <div className="text-sm text-ink-muted">Sign in to continue</div>
         </div>
-
-        {!isSupabaseConfigured && (
-          <div className="card p-4 mb-4 text-sm text-status-serious border-status-serious/30">
-            Supabase isn't configured yet. Set <code className="tabular">VITE_SUPABASE_URL</code> and{' '}
-            <code className="tabular">VITE_SUPABASE_ANON_KEY</code> in your <code>.env</code> file (see{' '}
-            <code>.env.example</code>), then create an admin user in Supabase Auth → Users.
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="card p-6 space-y-4">
-          <div>
-            <label className="label mb-1 block">Email</label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="input" placeholder="admin@example.com" />
-          </div>
-          <div>
-            <label className="label mb-1 block">Password</label>
-            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="input" placeholder="••••••••" />
-          </div>
-          {error && <p className="text-sm text-status-critical">{error}</p>}
-          <button type="submit" disabled={busy} className="btn-primary w-full justify-center">
-            {busy ? 'Signing in…' : 'Sign in'}
-          </button>
-        </form>
-        <p className="text-xs text-ink-muted text-center mt-4">
-          Admin logins are created in Supabase → Authentication → Users. See README.md for setup steps.
-        </p>
-      </div>
+        {error && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/30 rounded-lg px-3 py-2">{error}</div>}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Email</label>
+          <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Password</label>
+          <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </div>
+        <button className="btn-primary w-full" type="submit" disabled={submitting}>
+          {submitting ? 'Signing in…' : 'Sign in'}
+        </button>
+      </form>
     </div>
   );
 }
