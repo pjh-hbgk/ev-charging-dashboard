@@ -45,6 +45,24 @@ function isoWithZ(s: string): string {
   return s.endsWith('Z') ? s : `${s}Z`;
 }
 
+function toEdsParam(isoOrDate: string | Date): string {
+  // Energi Data Service's start/end filter params must be formatted as
+  // yyyy-MM-ddTHH:mm (no seconds, no 'Z') and are interpreted in Danish
+  // local time, not UTC. A plain .toISOString() is rejected with a 400.
+  const d = typeof isoOrDate === 'string' ? new Date(isoOrDate) : isoOrDate;
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Copenhagen',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+  const parts = Object.fromEntries(fmt.formatToParts(d).map((p) => [p.type, p.value])) as Record<string, string>;
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
 async function fetchJson<T>(url: string): Promise<{ records: T[] }> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Price API request failed: ${res.status} ${res.statusText} for ${url}`);
