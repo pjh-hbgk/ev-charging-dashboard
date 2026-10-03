@@ -1,21 +1,33 @@
 import { supabase } from '../supabaseClient';
 import type { PriceIntervalBound } from '../timezone';
 
-/** Load cached spot-price intervals overlapping a UTC range, whatever their resolution (60min or 15min). */
+/** Load cached spot-price intervals overlapping a UTC range, whatever their resolution (60min or 15min). Paginated to avoid Supabase's default 1000-row cap. */
 export async function getCachedPriceIntervals(priceArea: string, fromISO: string, toISO: string): Promise<PriceIntervalBound[]> {
-  const { data, error } = await supabase
-    .from('electricity_prices')
-    .select('interval_start, interval_end, price_dkk_kwh')
-    .eq('price_area', priceArea)
-    .lt('interval_start', toISO)
-    .gt('interval_end', fromISO)
-    .order('interval_start');
-  if (error) throw error;
-  return (data ?? []).map((row) => ({
-    start: row.interval_start as string,
-    end: row.interval_end as string,
-    price: Number(row.price_dkk_kwh),
-  }));
+  const PAGE_SIZE = 1000;
+  const all: PriceIntervalBound[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from('electricity_prices')
+      .select('interval_start, interval_end, price_dkk_kwh')
+      .eq('price_area', priceArea)
+      .lt('interval_start', toISO)
+      .gt('interval_end', fromISO)
+      .order('interval_start')
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = data ?? [];
+    for (const row of rows) {
+      all.push({
+        start: row.interval_start as string,
+        end: row.interval_end as string,
+        price: Number(row.price_dkk_kwh),
+      });
+    }
+    if (rows.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
 }
 
 export async function upsertPrices(
