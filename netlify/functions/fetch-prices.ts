@@ -97,7 +97,7 @@ async function fetchLivePrices(startISO: string, endISO: string, priceArea: stri
   const rows: Array<{ startISO: string; endISO: string; priceDkkKwh: number; source: string; includesVat: boolean }> = [];
 
   // Try the current 15-minute dataset first.
-  const dayAheadUrl = `${DAY_AHEAD_URL}?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}&filter=${encodeURIComponent(
+  const dayAheadUrl = `${DAY_AHEAD_URL}?start=${encodeURIComponent(toEdsParam(startISO))}&end=${encodeURIComponent(toEdsParam(endISO))}&filter=${encodeURIComponent(
     JSON.stringify({ PriceArea: [priceArea] })
   )}&sort=TimeUTC%20ASC&limit=20000`;
   const dayAhead = await fetchJson<DayAheadRecord>(dayAheadUrl);
@@ -119,7 +119,7 @@ async function fetchLivePrices(startISO: string, endISO: string, priceArea: stri
   // Determine if we still need legacy hourly data for the earlier part of the range.
   const coveredFrom = dayAhead.records.length > 0 ? new Date(isoWithZ(dayAhead.records[0].TimeUTC)) : new Date(endISO);
   if (coveredFrom > new Date(startISO)) {
-    const elspotUrl = `${ELSPOT_URL}?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(coveredFrom.toISOString())}&filter=${encodeURIComponent(
+    const elspotUrl = `${ELSPOT_URL}?start=${encodeURIComponent(toEdsParam(startISO))}&end=${encodeURIComponent(toEdsParam(coveredFrom))}&filter=${encodeURIComponent(
       JSON.stringify({ PriceArea: [priceArea] })
     )}&sort=HourUTC%20ASC&limit=20000`;
     try {
