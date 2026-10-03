@@ -16,5 +16,3 @@
 # trigger refreshes manually from Data Management / Electricity Prices.
 # When invoked on this schedule (no query string), fetch-prices.ts
 # defaults to a rolling window covering yesterday through 2 days ahead.
-[functions."fetch-prices"]
-  schedule = "@daily"
