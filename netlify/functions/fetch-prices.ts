@@ -76,7 +76,6 @@ function mockPrices(startISO: string, endISO: string, priceArea: string) {
   let i = 0;
   while (cursor < end) {
     const next = new Date(cursor.getTime() + 60 * 60000);
-    // deterministic pseudo-price with a day/night pattern, purely for local testing
     const hour = cursor.getUTCHours();
     const base = 0.6 + 0.35 * Math.sin(((hour - 6) / 24) * Math.PI * 2) + (hour >= 17 && hour <= 20 ? 0.4 : 0);
     rows.push({
@@ -116,7 +115,6 @@ async function fetchLivePrices(startISO: string, endISO: string, priceArea: stri
     }
   }
 
-  // Determine if we still need legacy hourly data for the earlier part of the range.
   const coveredFrom = dayAhead.records.length > 0 ? new Date(isoWithZ(dayAhead.records[0].TimeUTC)) : new Date(endISO);
   if (coveredFrom > new Date(startISO)) {
     const elspotUrl = `${ELSPOT_URL}?start=${encodeURIComponent(toEdsParam(startISO))}&end=${encodeURIComponent(toEdsParam(coveredFrom))}&filter=${encodeURIComponent(
@@ -149,10 +147,6 @@ export const handler: Handler = async (event) => {
     const params = event.queryStringParameters ?? {};
     const priceArea = params.priceArea ?? process.env.ELECTRICITY_PRICE_AREA ?? 'DK2';
 
-    // When invoked without query params (e.g. the daily scheduled trigger
-    // configured in netlify.toml), default to a rolling window so the
-    // cache stays warm for "yesterday through the next couple of days"
-    // without any manual action.
     const now = new Date();
     const defaultStart = new Date(now.getTime() - 2 * 86400000);
     const defaultEnd = new Date(now.getTime() + 2 * 86400000);
@@ -176,7 +170,6 @@ export const handler: Handler = async (event) => {
         includes_vat: r.includesVat,
         retrieved_at: new Date().toISOString(),
       }));
-      // Upsert in chunks to stay well under request size limits.
       for (let i = 0; i < payload.length; i += 1000) {
         const chunk = payload.slice(i, i + 1000);
         const { error } = await supabase.from('electricity_prices').upsert(chunk, { onConflict: 'price_area,interval_start' });
